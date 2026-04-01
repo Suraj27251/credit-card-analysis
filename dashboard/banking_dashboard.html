@@ -179,15 +179,89 @@
     .span-6 { grid-column: span 6; }
     .span-4 { grid-column: span 4; }
     .span-8 { grid-column: span 8; }
+    .span-12 { grid-column: span 12; }
 
     @media (max-width: 900px) {
-      .span-6, .span-4, .span-8 {
+      .span-6, .span-4, .span-8, .span-12 {
         grid-column: span 12;
       }
     }
 
     .tab-content { display: none; }
     .tab-content.active { display: block; }
+
+    .insights-section {
+      background: linear-gradient(135deg, #e8f3f9 0%, #f0f9ff 100%);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-top: 24px;
+      border-left: 5px solid var(--primary);
+    }
+
+    .insights-section h2 {
+      margin: 0 0 16px;
+      font-size: 1.3rem;
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .insights-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .insight-item {
+      background: var(--surface);
+      padding: 12px 14px;
+      border-radius: 10px;
+      border-left: 3px solid var(--accent);
+      font-size: 0.95rem;
+      color: var(--text);
+      line-height: 1.5;
+    }
+
+    .recommendations-section {
+      background: linear-gradient(135deg, #fff8e1 0%, #fffbf0 100%);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-top: 24px;
+      border-left: 5px solid #f59e0b;
+    }
+
+    .recommendations-section h2 {
+      margin: 0 0 16px;
+      font-size: 1.3rem;
+      color: #f59e0b;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .recommendations-list {
+      display: grid;
+      gap: 14px;
+    }
+
+    .recommendation-item {
+      background: var(--surface);
+      padding: 14px;
+      border-radius: 10px;
+      border-left: 4px solid #f59e0b;
+    }
+
+    .recommendation-item strong {
+      color: var(--primary);
+      font-size: 0.95rem;
+    }
+
+    .recommendation-item p {
+      margin: 6px 0 0;
+      color: var(--text);
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
 
     @keyframes fadeIn {
       from { opacity: 0; transform: translateY(8px); }
@@ -237,6 +311,20 @@
           <h3>Active vs Inactive Customers</h3>
           <canvas id="activeInactiveChart"></canvas>
         </div>
+        <div class="card span-6">
+          <h3>Revenue by Segment</h3>
+          <canvas id="revenueSegmentChart"></canvas>
+        </div>
+      </div>
+
+      <div class="insights-section">
+        <h2>💡 Key Insights</h2>
+        <div class="insights-list" id="keyInsights"></div>
+      </div>
+
+      <div class="recommendations-section">
+        <h2>🎯 Business Recommendations</h2>
+        <div class="recommendations-list" id="recommendations"></div>
       </div>
     </section>
 
@@ -264,20 +352,43 @@
   </div>
 
   <script>
-    const customers = [
-      { customer_id: 1, age: 34, gender: "Male", region: "North", income: 72000, credit_limit: 9000, total_spend: 3800, transactions: 45, is_active: true, segment: "Medium" },
-      { customer_id: 2, age: 28, gender: "Female", region: "South", income: 54000, credit_limit: 6000, total_spend: 2500, transactions: 30, is_active: true, segment: "Low" },
-      { customer_id: 3, age: 42, gender: "Female", region: "East", income: 98000, credit_limit: 15000, total_spend: 8200, transactions: 70, is_active: true, segment: "High" },
-      { customer_id: 4, age: 50, gender: "Male", region: "West", income: 115000, credit_limit: 18000, total_spend: 9100, transactions: 85, is_active: false, segment: "High" },
-      { customer_id: 5, age: 31, gender: "Female", region: "North", income: 61000, credit_limit: 8000, total_spend: 3300, transactions: 40, is_active: true, segment: "Medium" },
-      { customer_id: 6, age: 39, gender: "Male", region: "South", income: 46000, credit_limit: 5000, total_spend: 1800, transactions: 22, is_active: false, segment: "Low" },
-      { customer_id: 7, age: 46, gender: "Female", region: "East", income: 87000, credit_limit: 12000, total_spend: 6900, transactions: 63, is_active: true, segment: "High" },
-      { customer_id: 8, age: 29, gender: "Male", region: "West", income: 68000, credit_limit: 8500, total_spend: 3500, transactions: 39, is_active: true, segment: "Medium" },
-      { customer_id: 9, age: 37, gender: "Female", region: "North", income: 49000, credit_limit: 5500, total_spend: 2200, transactions: 28, is_active: false, segment: "Low" },
-      { customer_id: 10, age: 33, gender: "Male", region: "South", income: 102000, credit_limit: 16000, total_spend: 8400, transactions: 76, is_active: true, segment: "High" },
-      { customer_id: 11, age: 45, gender: "Female", region: "East", income: 73000, credit_limit: 9500, total_spend: 4100, transactions: 48, is_active: true, segment: "Medium" },
-      { customer_id: 12, age: 27, gender: "Male", region: "West", income: 52000, credit_limit: 6200, total_spend: 2600, transactions: 31, is_active: false, segment: "Low" }
-    ];
+    // Generate 250 customer records with realistic data
+    function generateCustomers() {
+      const regions = ["North", "South", "East", "West"];
+      const segments = ["Low", "Medium", "High"];
+      const firstNames = ["John", "Jane", "Michael", "Emily", "David", "Sarah", "Robert", "Jessica", "William", "Linda", "Richard", "Barbara", "Joseph", "Susan", "Thomas", "Lisa", "Charles", "Patricia", "Daniel", "Karen"];
+      const lastNames = ["Smith", "Johnson", "Williams", "Brown", "Jones", "Garcia", "Miller", "Davis", "Rodriguez", "Martinez", "Hernandez", "Lopez", "Gonzalez", "Wilson", "Anderson", "Thomas", "Taylor", "Moore", "Jackson", "Martin"];
+
+      const customers = [];
+      for (let i = 1; i <= 250; i++) {
+        const age = Math.floor(Math.random() * (65 - 22) + 22);
+        const region = regions[Math.floor(Math.random() * regions.length)];
+        const baseIncome = Math.floor(Math.random() * (150000 - 35000) + 35000);
+        let segment = "Low";
+        if (baseIncome > 100000) segment = "High";
+        else if (baseIncome > 65000) segment = "Medium";
+
+        const creditLimit = Math.floor(baseIncome / 7);
+        const spendRatio = 0.25 + Math.random() * 0.35;
+        const totalSpend = Math.floor(creditLimit * spendRatio);
+
+        customers.push({
+          customer_id: i,
+          age,
+          gender: Math.random() > 0.5 ? "Male" : "Female",
+          region,
+          income: baseIncome,
+          credit_limit: creditLimit,
+          total_spend: totalSpend,
+          transactions: Math.floor(20 + Math.random() * 80),
+          is_active: Math.random() > 0.25,
+          segment
+        });
+      }
+      return customers;
+    }
+
+    const customers = generateCustomers();
 
     const monthlySpend = {
       Jan: 7200, Feb: 7600, Mar: 8100, Apr: 7900, May: 8500, Jun: 8900,
@@ -365,6 +476,11 @@
         return acc;
       }, {});
 
+      const revenueBySegment = data.reduce((acc, c) => {
+        acc[c.segment] = (acc[c.segment] || 0) + c.total_spend;
+        return acc;
+      }, {});
+
       const active = data.filter(c => c.is_active).length;
       const inactive = data.length - active;
 
@@ -441,6 +557,23 @@
         options: chartDefaults
       });
 
+      charts.revenueSegment = new Chart(document.getElementById("revenueSegmentChart"), {
+        type: "bar",
+        data: {
+          labels: Object.keys(revenueBySegment),
+          datasets: [{
+            label: "Revenue",
+            data: Object.values(revenueBySegment),
+            backgroundColor: ["#1f4e79", "#2aa198", "#f59e0b"],
+            borderRadius: 8
+          }]
+        },
+        options: {
+          ...chartDefaults,
+          scales: { y: { ticks: { callback: val => `$${val}` } } }
+        }
+      });
+
       charts.categoryTx = new Chart(document.getElementById("categoryTxChart"), {
         type: "bar",
         data: {
@@ -487,6 +620,68 @@
       });
     }
 
+    function renderKeyInsights(data) {
+      const byRegion = data.reduce((acc, c) => {
+        acc[c.region] = (acc[c.region] || 0) + c.total_spend;
+        return acc;
+      }, {});
+      
+      const bySegment = data.reduce((acc, c) => {
+        acc[c.segment] = (acc[c.segment] || 0) + c.total_spend;
+        return acc;
+      }, {});
+
+      const topRegion = Object.entries(byRegion).sort((a, b) => b[1] - a[1])[0];
+      const topSegment = Object.entries(bySegment).sort((a, b) => b[1] - a[1])[0];
+      const avgSpend = data.length ? data.reduce((sum, c) => sum + c.total_spend, 0) / data.length : 0;
+      const activeRate = data.length ? (data.filter(c => c.is_active).length / data.length * 100).toFixed(1) : 0;
+      const avgIncome = data.length ? data.reduce((sum, c) => sum + c.income, 0) / data.length : 0;
+
+      const insights = [
+        `${topRegion ? topRegion[0] : 'N/A'} Region leads with ${formatCurrency(topRegion ? topRegion[1] : 0)} in total spending`,
+        `${topSegment ? topSegment[0] : 'N/A'} segment generates ${formatCurrency(topSegment ? topSegment[1] : 0)} in revenue`,
+        `Average customer spend is ${formatCurrency(avgSpend)}, with average income of ${formatCurrency(avgIncome)}`,
+        `${activeRate}% of customers remain active, indicating strong engagement levels`
+      ];
+
+      const container = document.getElementById("keyInsights");
+      container.innerHTML = insights.map(insight => `<div class="insight-item">• ${insight}</div>`).join("");
+    }
+
+    function renderRecommendations(data) {
+      const bySegment = data.reduce((acc, c) => {
+        acc[c.segment] = (acc[c.segment] || 0) + c.total_spend;
+        return acc;
+      }, {});
+
+      const recommendations = [
+        {
+          title: "Focus on High-Value Segment Growth",
+          desc: "High-segment customers drive the most revenue. Develop premium products and personalized services to expand this segment by 20%."
+        },
+        {
+          title: "Activate Dormant Customers",
+          desc: "Re-engage inactive customers with targeted campaigns offering rewards or credit line increases. Target customers with 30+ day inactivity."
+        },
+        {
+          title: "Regional Expansion Strategy",
+          desc: "Allocate more marketing resources to underperforming regions. Conduct market analysis and localize offerings to increase regional penetration."
+        },
+        {
+          title: "Cross-Sell Opportunities",
+          desc: "Medium-segment customers show potential for upselling. Create bundled offers combining credit services with insurance or investment products."
+        }
+      ];
+
+      const container = document.getElementById("recommendations");
+      container.innerHTML = recommendations.map(rec => `
+        <div class="recommendation-item">
+          <strong>→ ${rec.title}</strong>
+          <p>${rec.desc}</p>
+        </div>
+      `).join("");
+    }
+
     function populateFilters() {
       const regions = ["All", ...uniqueValues(customers, "region")];
       const segments = ["All", ...uniqueValues(customers, "segment")];
@@ -499,6 +694,8 @@
       const data = filteredData();
       renderKPIs(data);
       renderCharts(data);
+      renderKeyInsights(data);
+      renderRecommendations(data);
     }
 
     function setupTabs() {
