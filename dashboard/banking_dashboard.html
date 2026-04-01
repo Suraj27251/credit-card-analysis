@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Banking Analytics Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --surface: #ffffff;
+      --primary: #1f4e79;
+      --primary-light: #2f74b5;
+      --accent: #2aa198;
+      --text: #1b263b;
+      --muted: #6b778d;
+      --danger: #d9534f;
+      --success: #2e7d32;
+      --shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+      --radius: 14px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Inter", "Segoe UI", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .app {
+      max-width: 1300px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .header h1 {
+      margin: 0;
+      font-size: 1.7rem;
+      color: var(--primary);
+    }
+
+    .tabs {
+      display: flex;
+      gap: 10px;
+      background: var(--surface);
+      border-radius: 999px;
+      padding: 6px;
+      box-shadow: var(--shadow);
+    }
+
+    .tab {
+      border: none;
+      background: transparent;
+      padding: 10px 16px;
+      border-radius: 999px;
+      font-weight: 600;
+      color: var(--muted);
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .tab.active {
+      background: var(--primary);
+      color: #fff;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .control-card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 12px;
+    }
+
+    label {
+      display: block;
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    select {
+      width: 100%;
+      padding: 10px;
+      border-radius: 10px;
+      border: 1px solid #dbe3ef;
+      background: #fff;
+      font-size: 0.95rem;
+      cursor: pointer;
+    }
+
+    .kpis {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+
+    .kpi {
+      background: var(--surface);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 16px;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+    }
+
+    .kpi:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 28px rgba(15, 23, 42, 0.14);
+    }
+
+    .kpi .icon {
+      font-size: 1.2rem;
+      margin-bottom: 10px;
+      display: inline-block;
+      background: #edf3fb;
+      padding: 8px;
+      border-radius: 10px;
+    }
+
+    .kpi h3 {
+      margin: 0;
+      font-size: 0.9rem;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    .kpi .value {
+      margin-top: 8px;
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: var(--primary);
+    }
+
+    .charts {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 16px;
+    }
+
+    .card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 14px;
+      transition: transform 0.25s ease;
+      animation: fadeIn 0.5s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-3px);
+    }
+
+    .card h3 {
+      margin: 0 0 10px;
+      font-size: 1rem;
+      color: var(--primary);
+    }
+
+    .span-6 { grid-column: span 6; }
+    .span-4 { grid-column: span 4; }
+    .span-8 { grid-column: span 8; }
+
+    @media (max-width: 900px) {
+      .span-6, .span-4, .span-8 {
+        grid-column: span 12;
+      }
+    }
+
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="header">
+      <h1>💳 Banking Analytics Dashboard</h1>
+      <div class="tabs">
+        <button class="tab active" data-tab="overview">Overview</button>
+        <button class="tab" data-tab="customers">Customers</button>
+        <button class="tab" data-tab="revenue">Revenue</button>
+      </div>
+    </div>
+
+    <div class="controls">
+      <div class="control-card">
+        <label for="regionFilter">Filter by Region</label>
+        <select id="regionFilter"></select>
+      </div>
+      <div class="control-card">
+        <label for="segmentFilter">Filter by Segment</label>
+        <select id="segmentFilter"></select>
+      </div>
+    </div>
+
+    <div class="kpis" id="kpiContainer"></div>
+
+    <section id="overview" class="tab-content active">
+      <div class="charts">
+        <div class="card span-6">
+          <h3>Spend by Region</h3>
+          <canvas id="regionSpendChart"></canvas>
+        </div>
+        <div class="card span-6">
+          <h3>Customer Segments</h3>
+          <canvas id="segmentPieChart"></canvas>
+        </div>
+        <div class="card span-8">
+          <h3>Monthly Spending Trend</h3>
+          <canvas id="monthlyTrendChart"></canvas>
+        </div>
+        <div class="card span-4">
+          <h3>Active vs Inactive Customers</h3>
+          <canvas id="activeInactiveChart"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <section id="customers" class="tab-content">
+      <div class="charts">
+        <div class="card span-6">
+          <h3>Transactions by Category</h3>
+          <canvas id="categoryTxChart"></canvas>
+        </div>
+        <div class="card span-6">
+          <h3>Customer Segments (Filtered View)</h3>
+          <canvas id="segmentBarChart"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <section id="revenue" class="tab-content">
+      <div class="charts">
+        <div class="card span-12">
+          <h3>Revenue (Total Spend) by Region</h3>
+          <canvas id="revenueRegionChart"></canvas>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const customers = [
+      { customer_id: 1, age: 34, gender: "Male", region: "North", income: 72000, credit_limit: 9000, total_spend: 3800, transactions: 45, is_active: true, segment: "Medium" },
+      { customer_id: 2, age: 28, gender: "Female", region: "South", income: 54000, credit_limit: 6000, total_spend: 2500, transactions: 30, is_active: true, segment: "Low" },
+      { customer_id: 3, age: 42, gender: "Female", region: "East", income: 98000, credit_limit: 15000, total_spend: 8200, transactions: 70, is_active: true, segment: "High" },
+      { customer_id: 4, age: 50, gender: "Male", region: "West", income: 115000, credit_limit: 18000, total_spend: 9100, transactions: 85, is_active: false, segment: "High" },
+      { customer_id: 5, age: 31, gender: "Female", region: "North", income: 61000, credit_limit: 8000, total_spend: 3300, transactions: 40, is_active: true, segment: "Medium" },
+      { customer_id: 6, age: 39, gender: "Male", region: "South", income: 46000, credit_limit: 5000, total_spend: 1800, transactions: 22, is_active: false, segment: "Low" },
+      { customer_id: 7, age: 46, gender: "Female", region: "East", income: 87000, credit_limit: 12000, total_spend: 6900, transactions: 63, is_active: true, segment: "High" },
+      { customer_id: 8, age: 29, gender: "Male", region: "West", income: 68000, credit_limit: 8500, total_spend: 3500, transactions: 39, is_active: true, segment: "Medium" },
+      { customer_id: 9, age: 37, gender: "Female", region: "North", income: 49000, credit_limit: 5500, total_spend: 2200, transactions: 28, is_active: false, segment: "Low" },
+      { customer_id: 10, age: 33, gender: "Male", region: "South", income: 102000, credit_limit: 16000, total_spend: 8400, transactions: 76, is_active: true, segment: "High" },
+      { customer_id: 11, age: 45, gender: "Female", region: "East", income: 73000, credit_limit: 9500, total_spend: 4100, transactions: 48, is_active: true, segment: "Medium" },
+      { customer_id: 12, age: 27, gender: "Male", region: "West", income: 52000, credit_limit: 6200, total_spend: 2600, transactions: 31, is_active: false, segment: "Low" }
+    ];
+
+    const monthlySpend = {
+      Jan: 7200, Feb: 7600, Mar: 8100, Apr: 7900, May: 8500, Jun: 8900,
+      Jul: 9100, Aug: 9350, Sep: 9600, Oct: 9800, Nov: 10200, Dec: 10900
+    };
+
+    const transactionsByCategory = {
+      Grocery: 220,
+      Travel: 140,
+      Dining: 175,
+      Entertainment: 130,
+      Utilities: 155,
+      Shopping: 210
+    };
+
+    const regionFilter = document.getElementById("regionFilter");
+    const segmentFilter = document.getElementById("segmentFilter");
+    const kpiContainer = document.getElementById("kpiContainer");
+
+    let charts = {};
+
+    function uniqueValues(data, key) {
+      return [...new Set(data.map(d => d[key]))];
+    }
+
+    function formatCurrency(value) {
+      return value.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+    }
+
+    function filteredData() {
+      const region = regionFilter.value;
+      const segment = segmentFilter.value;
+
+      return customers.filter(c =>
+        (region === "All" || c.region === region) &&
+        (segment === "All" || c.segment === segment)
+      );
+    }
+
+    function renderKPIs(data) {
+      const totalCustomers = data.length;
+      const totalSpend = data.reduce((sum, c) => sum + c.total_spend, 0);
+      const avgSpend = totalCustomers ? totalSpend / totalCustomers : 0;
+      const activeCount = data.filter(c => c.is_active).length;
+      const activePct = totalCustomers ? (activeCount / totalCustomers) * 100 : 0;
+      const segments = data.reduce((acc, c) => {
+        acc[c.segment] = (acc[c.segment] || 0) + 1;
+        return acc;
+      }, {});
+
+      const topSegment = Object.entries(segments).sort((a, b) => b[1] - a[1])[0]?.[0] || "N/A";
+
+      const cards = [
+        { title: "Total Customers", value: totalCustomers.toLocaleString(), icon: "👥" },
+        { title: "Total Revenue", value: formatCurrency(totalSpend), icon: "💰" },
+        { title: "Avg Spend / Customer", value: formatCurrency(avgSpend), icon: "📈" },
+        { title: "Active Customers %", value: `${activePct.toFixed(1)}%`, icon: "✅" },
+        { title: "Top Segment", value: topSegment, icon: "🏷️" }
+      ];
+
+      kpiContainer.innerHTML = cards.map(card => `
+        <div class="kpi">
+          <span class="icon">${card.icon}</span>
+          <h3>${card.title}</h3>
+          <div class="value">${card.value}</div>
+        </div>
+      `).join("");
+    }
+
+    function destroyCharts() {
+      Object.values(charts).forEach(chart => chart.destroy());
+      charts = {};
+    }
+
+    function renderCharts(data) {
+      destroyCharts();
+
+      const byRegion = data.reduce((acc, c) => {
+        acc[c.region] = (acc[c.region] || 0) + c.total_spend;
+        return acc;
+      }, {});
+
+      const bySegment = data.reduce((acc, c) => {
+        acc[c.segment] = (acc[c.segment] || 0) + 1;
+        return acc;
+      }, {});
+
+      const active = data.filter(c => c.is_active).length;
+      const inactive = data.length - active;
+
+      const chartDefaults = {
+        responsive: true,
+        plugins: {
+          legend: { labels: { color: "#334155" } },
+          tooltip: { enabled: true }
+        },
+        animation: { duration: 900, easing: "easeOutQuart" }
+      };
+
+      charts.regionSpend = new Chart(document.getElementById("regionSpendChart"), {
+        type: "bar",
+        data: {
+          labels: Object.keys(byRegion),
+          datasets: [{
+            label: "Spend",
+            data: Object.values(byRegion),
+            backgroundColor: "rgba(47, 116, 181, 0.8)",
+            borderRadius: 8
+          }]
+        },
+        options: {
+          ...chartDefaults,
+          scales: { y: { ticks: { callback: val => `$${val}` } } }
+        }
+      });
+
+      charts.segmentPie = new Chart(document.getElementById("segmentPieChart"), {
+        type: "pie",
+        data: {
+          labels: Object.keys(bySegment),
+          datasets: [{
+            data: Object.values(bySegment),
+            backgroundColor: ["#1f4e79", "#2aa198", "#f59e0b"],
+            hoverOffset: 10
+          }]
+        },
+        options: chartDefaults
+      });
+
+      charts.monthlyTrend = new Chart(document.getElementById("monthlyTrendChart"), {
+        type: "line",
+        data: {
+          labels: Object.keys(monthlySpend),
+          datasets: [{
+            label: "Monthly Spend",
+            data: Object.values(monthlySpend),
+            borderColor: "#2f74b5",
+            backgroundColor: "rgba(47, 116, 181, 0.15)",
+            fill: true,
+            tension: 0.35,
+            pointRadius: 4,
+            pointHoverRadius: 7
+          }]
+        },
+        options: {
+          ...chartDefaults,
+          interaction: { mode: "index", intersect: false }
+        }
+      });
+
+      charts.activeInactive = new Chart(document.getElementById("activeInactiveChart"), {
+        type: "doughnut",
+        data: {
+          labels: ["Active", "Inactive"],
+          datasets: [{
+            data: [active, inactive],
+            backgroundColor: ["#2e7d32", "#d9534f"],
+            hoverOffset: 8
+          }]
+        },
+        options: chartDefaults
+      });
+
+      charts.categoryTx = new Chart(document.getElementById("categoryTxChart"), {
+        type: "bar",
+        data: {
+          labels: Object.keys(transactionsByCategory),
+          datasets: [{
+            label: "Transactions",
+            data: Object.values(transactionsByCategory),
+            backgroundColor: "rgba(42, 161, 152, 0.8)",
+            borderRadius: 8
+          }]
+        },
+        options: chartDefaults
+      });
+
+      charts.segmentBar = new Chart(document.getElementById("segmentBarChart"), {
+        type: "bar",
+        data: {
+          labels: Object.keys(bySegment),
+          datasets: [{
+            label: "Customers",
+            data: Object.values(bySegment),
+            backgroundColor: ["#1f4e79", "#2aa198", "#f59e0b"],
+            borderRadius: 8
+          }]
+        },
+        options: chartDefaults
+      });
+
+      charts.revenueRegion = new Chart(document.getElementById("revenueRegionChart"), {
+        type: "bar",
+        data: {
+          labels: Object.keys(byRegion),
+          datasets: [{
+            label: "Revenue",
+            data: Object.values(byRegion),
+            backgroundColor: "rgba(31, 78, 121, 0.85)",
+            borderRadius: 10
+          }]
+        },
+        options: {
+          ...chartDefaults,
+          scales: { y: { ticks: { callback: val => `$${val}` } } }
+        }
+      });
+    }
+
+    function populateFilters() {
+      const regions = ["All", ...uniqueValues(customers, "region")];
+      const segments = ["All", ...uniqueValues(customers, "segment")];
+
+      regionFilter.innerHTML = regions.map(r => `<option>${r}</option>`).join("");
+      segmentFilter.innerHTML = segments.map(s => `<option>${s}</option>`).join("");
+    }
+
+    function refreshDashboard() {
+      const data = filteredData();
+      renderKPIs(data);
+      renderCharts(data);
+    }
+
+    function setupTabs() {
+      document.querySelectorAll(".tab").forEach(tab => {
+        tab.addEventListener("click", () => {
+          document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+          document.querySelectorAll(".tab-content").forEach(content => content.classList.remove("active"));
+
+          tab.classList.add("active");
+          document.getElementById(tab.dataset.tab).classList.add("active");
+        });
+      });
+    }
+
+    regionFilter.addEventListener("change", refreshDashboard);
+    segmentFilter.addEventListener("change", refreshDashboard);
+
+    populateFilters();
+    setupTabs();
+    refreshDashboard();
+  </script>
+</body>
+</html>
