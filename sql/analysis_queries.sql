@@ -334,3 +334,199 @@ FROM customer_spend cs
 JOIN dim_customers c ON cs.customer_id = c.customer_id
 WHERE cs.spend_rank <= 50
 ORDER BY cs.spend_rank, cs.customer_id;
+
+
+-- =========================================================
+-- 8) CHURN + SEGMENTATION + RECOMMENDATION DATASET
+-- =========================================================
+-- Churn definition used for this project:
+--   Churn Risk (Inactive / Low Usage) when either condition is true:
+--   1) INACTIVE: active_months <= 3 out of 6
+--   2) LOW_USAGE: bottom quartile spend AND <= 2 categories used
+--
+-- Strategic segment definitions:
+--   - High Value: top quartile spend + active_months >= 5
+--   - At Risk: churn risk criteria met
+--   - Low Value: remaining bottom 50% spend and low activity
+--   - Core: all remaining customers
+
+WITH monthly_customer AS (
+    SELECT
+        customer_id,
+        month,
+        SUM(spend) AS month_spend
+    FROM fact_spends
+    GROUP BY customer_id, month
+), spend_features AS (
+    SELECT
+        customer_id,
+        SUM(spend) AS total_spend,
+        COUNT(DISTINCT category) AS categories_used,
+        COUNT(DISTINCT payment_type) AS payment_types_used
+    FROM fact_spends
+    GROUP BY customer_id
+), activity_features AS (
+    SELECT
+        customer_id,
+        COUNT(DISTINCT month) AS active_months
+    FROM monthly_customer
+    GROUP BY customer_id
+), customer_features AS (
+    SELECT
+        s.customer_id,
+        s.total_spend,
+        s.categories_used,
+        s.payment_types_used,
+        a.active_months
+    FROM spend_features s
+    JOIN activity_features a ON s.customer_id = a.customer_id
+), scored AS (
+    SELECT
+        customer_id,
+        total_spend,
+        categories_used,
+        payment_types_used,
+        active_months,
+        NTILE(4) OVER (ORDER BY total_spend DESC) AS spend_quartile_desc,
+        NTILE(4) OVER (ORDER BY total_spend ASC) AS spend_quartile_asc
+    FROM customer_features
+), labeled AS (
+    SELECT
+        customer_id,
+        total_spend,
+        categories_used,
+        payment_types_used,
+        active_months,
+        CASE
+            WHEN active_months <= 3 THEN 'Inactive'
+            WHEN spend_quartile_asc = 1 AND categories_used <= 2 THEN 'Low Usage'
+            ELSE 'Not Churn Risk'
+        END AS churn_status,
+        CASE
+            WHEN spend_quartile_desc = 1 AND active_months >= 5 THEN 'High Value'
+            WHEN active_months <= 3 OR (spend_quartile_asc = 1 AND categories_used <= 2) THEN 'At Risk'
+            WHEN spend_quartile_asc <= 2 AND active_months <= 4 THEN 'Low Value'
+            ELSE 'Core'
+        END AS customer_segment
+    FROM scored
+)
+SELECT
+    customer_segment,
+    churn_status,
+    COUNT(*) AS customers,
+    ROUND(AVG(total_spend), 2) AS avg_total_spend,
+    ROUND(AVG(active_months), 2) AS avg_active_months,
+    ROUND(AVG(categories_used), 2) AS avg_categories_used,
+    ROUND(AVG(payment_types_used), 2) AS avg_payment_types_used
+FROM labeled
+GROUP BY customer_segment, churn_status
+ORDER BY customers DESC;
+
+-- Dashboard visual dataset: trend of churn-risk customers by month
+WITH customer_month AS (
+    SELECT
+        customer_id,
+        month,
+        SUM(spend) AS monthly_spend,
+        COUNT(DISTINCT category) AS categories_used
+    FROM fact_spends
+    GROUP BY customer_id, month
+), monthly_scored AS (
+    SELECT
+        customer_id,
+        month,
+        monthly_spend,
+        categories_used,
+        NTILE(4) OVER (PARTITION BY month ORDER BY monthly_spend ASC) AS month_spend_quartile
+    FROM customer_month
+)
+SELECT
+    month,
+    SUM(CASE WHEN monthly_spend = 0 THEN 1 ELSE 0 END) AS inactive_customers,
+    SUM(CASE WHEN month_spend_quartile = 1 AND categories_used <= 2 THEN 1 ELSE 0 END) AS low_usage_customers,
+    COUNT(*) AS total_customers,
+    ROUND(
+        100.0 * SUM(CASE WHEN month_spend_quartile = 1 AND categories_used <= 2 THEN 1 ELSE 0 END) / COUNT(*),
+        2
+    ) AS low_usage_pct
+FROM monthly_scored
+GROUP BY month
+ORDER BY month;
+
+-- Action recommendation table by segment
+WITH monthly_customer AS (
+    SELECT
+        customer_id,
+        month,
+        SUM(spend) AS month_spend
+    FROM fact_spends
+    GROUP BY customer_id, month
+), spend_features AS (
+    SELECT
+        customer_id,
+        SUM(spend) AS total_spend,
+        COUNT(DISTINCT category) AS categories_used,
+        COUNT(DISTINCT payment_type) AS payment_types_used
+    FROM fact_spends
+    GROUP BY customer_id
+), activity_features AS (
+    SELECT
+        customer_id,
+        COUNT(DISTINCT month) AS active_months
+    FROM monthly_customer
+    GROUP BY customer_id
+), customer_features AS (
+    SELECT
+        s.customer_id,
+        s.total_spend,
+        s.categories_used,
+        s.payment_types_used,
+        a.active_months
+    FROM spend_features s
+    JOIN activity_features a ON s.customer_id = a.customer_id
+), scored AS (
+    SELECT
+        cf.customer_id,
+        cf.total_spend,
+        cf.categories_used,
+        cf.payment_types_used,
+        cf.active_months,
+        c.avg_income,
+        NTILE(4) OVER (ORDER BY cf.total_spend DESC) AS spend_quartile_desc,
+        NTILE(4) OVER (ORDER BY cf.total_spend ASC) AS spend_quartile_asc
+    FROM customer_features cf
+    JOIN dim_customers c ON cf.customer_id = c.customer_id
+), segments AS (
+    SELECT
+        customer_id,
+        total_spend,
+        avg_income,
+        active_months,
+        payment_types_used,
+        CASE
+            WHEN spend_quartile_desc = 1 AND active_months >= 5 THEN 'High Value'
+            WHEN active_months <= 3 OR (spend_quartile_asc = 1 AND categories_used <= 2) THEN 'At Risk'
+            WHEN spend_quartile_asc <= 2 AND active_months <= 4 THEN 'Low Value'
+            ELSE 'Core'
+        END AS customer_segment
+    FROM scored
+)
+SELECT
+    customer_segment,
+    COUNT(*) AS customers,
+    ROUND(AVG(total_spend), 2) AS avg_total_spend,
+    ROUND(AVG(avg_income), 2) AS avg_income,
+    ROUND(AVG(active_months), 2) AS avg_active_months,
+    ROUND(AVG(payment_types_used), 2) AS avg_payment_types_used,
+    CASE
+        WHEN customer_segment = 'High Value'
+            THEN 'Target high-spend inactive users with personalized rewards and premium reactivation offers'
+        WHEN customer_segment = 'At Risk'
+            THEN 'Focus retention with win-back campaigns, fee waivers, and recurring spend nudges'
+        WHEN customer_segment = 'Low Value'
+            THEN 'Promote multi-product usage with simple bundles (card + UPI + autopay bills)'
+        ELSE 'Upsell adjacent products and maintain engagement with category-based benefits'
+    END AS recommendation
+FROM segments
+GROUP BY customer_segment
+ORDER BY avg_total_spend DESC;

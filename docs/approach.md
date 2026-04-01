@@ -21,7 +21,14 @@ Provide actionable insights for the product strategy team to:
      - Payment type count
 4. **Segmentation and risk modeling**
    - Value segments from spend quartiles.
-   - Risk proxy segment: bottom spend quartile + low payment breadth.
+   - Churn definition added:
+     - **Inactive**: customer active in 3 or fewer months (out of 6).
+     - **Low usage**: bottom spend quartile with 2 or fewer categories used.
+   - Strategic customer segments added:
+     - **High Value**: top quartile spend + active in at least 5 months.
+     - **At Risk**: inactive or low-usage criteria.
+     - **Low Value**: lower spend + lower activity.
+     - **Core**: remaining customer base.
 5. **Business analysis pillars**
    - Customer segmentation
    - Churn-risk proxy analysis
@@ -29,7 +36,12 @@ Provide actionable insights for the product strategy team to:
    - Revenue analysis
    - Customer activity analysis
 6. **Dashboard mapping**
-   - Translated outputs into a 4-page dashboard structure (Overview, Risk, Product, Revenue).
+   - Translated outputs into a 4-page dashboard structure (Overview, Churn Risk, Segments, Revenue).
+   - Added churn visuals blueprint:
+     - Monthly trend line: low-usage customer %
+     - Segment bar chart: customers by segment (High Value / At Risk / Low Value / Core)
+     - City heatmap/table: at-risk concentration by geography
+     - Recommendation matrix: segment-level next-best action
 
 ## KPI Framework Used
 Because true churn fields are unavailable, KPIs are adapted to this dataset.
