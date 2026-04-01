@@ -25,12 +25,18 @@ This analysis evaluates customer spending behavior to support product strategy d
 
 **Interpretation:** Best customers are not only high spenders, but also those with broader payment behavior and consistent monthly activity.
 
+### Segment framework upgraded
+- **High Value**: top quartile spend + active in at least 5 months.
+- **At Risk**: inactive and/or low-usage definition met.
+- **Low Value**: lower spend and lower activity mix.
+- **Core**: remaining stable customers.
+
 ---
 
 ## B) Churn Analysis (Proxy) — “Who is at risk and why?”
 Because there is no `Exited` field, churn-risk is proxied by:
-1) bottom quartile spend, and
-2) limited payment method usage.
+1) **Inactive behavior**: active in 3 or fewer months (out of 6), and/or
+2) **Low usage behavior**: bottom quartile spend with 2 or fewer spend categories.
 
 ### Key risk patterns
 - Low spend concentration indicates weak product attachment.
@@ -38,6 +44,11 @@ Because there is no `Exited` field, churn-risk is proxied by:
 - There are customers with **above-median income but bottom-quartile spend**, indicating unrealized wallet share.
 
 **Interpretation:** Risk is less about financial capacity and more about low engagement depth.
+
+### Churn visuals added to dashboard design
+- Monthly churn-risk trend (% low-usage customers)
+- Risk split chart (Inactive vs Low Usage vs Not Risk)
+- At-risk concentration by city/age group
 
 ---
 
@@ -89,24 +100,22 @@ Because there is no `Exited` field, churn-risk is proxied by:
 ---
 
 ## 4) Final Recommendations (Actionable)
-1. **Retention-style campaigns for low-engagement customers**
-   - Trigger offers for bottom-spend quartile customers.
-   - Incentivize second payment mode adoption.
+1. **Target high-spend inactive users with offers**
+   - Detect high-spend users whose monthly activity has declined.
+   - Launch time-bound premium cashback/welcome-back campaigns.
 
-2. **Grow multi-product/payment behavior**
-   - Promote bundled rewards across credit card + UPI + debit usage.
-   - Offer milestone rewards for category expansion.
+2. **Promote multi-product usage**
+   - Bundle rewards for customers using multiple payment modes.
+   - Prioritize low-usage customers for “second product” activation journeys.
 
-3. **Protect high-value segments**
-   - VIP benefits for top-spend quartile customers.
-   - Priority servicing for top city/occupation cohorts.
+3. **Focus retention on specific segments**
+   - At Risk segment: retention-first communication, win-back nudges, fee relief.
+   - High Value segment: loyalty/VIP protection to prevent premium churn.
+   - Low Value segment: low-cost digital nudges and habit-building journeys.
 
-4. **Category-led growth playbook**
-   - Use Bills/Groceries as anchor categories for recurring engagement campaigns.
-   - Attach cross-sell nudges into high-frequency categories.
-
-5. **Region-focused strategy**
-   - Replicate successful high-performing region tactics in lower-performing cities.
+4. **Operationalize recommendations in dashboard**
+   - Add segment-wise recommendation table to drive action ownership.
+   - Track monthly movement between segments to evaluate campaign impact.
 
 ---
 
